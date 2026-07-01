@@ -1,22 +1,24 @@
 # **Rapportage Solution Architecture**
 
 ###### *Mikail Sari, Dymo Waltheer, Eren Aygun & Stef Rensma*
+*01/07/2026*
 
 # Microservices based on the principles of DDD
 
 De microservices worden direct aangemaakt in de root folder van het project.
-Deze geïsoleerde services functioneren als één Bounded Context.
+Elk van deze microservices functioneren als een eigen Bounded Context (BC).
 Deze BC’s halen we uit de Context Map die we hebben gemaakt doot te kijken naar de casus.
 
-Binnen de service kun je routeren naar de “app/” map waar onze “models.py” te vinden is.
-Binnen deze file zijn de DDD-patronen gedefinieerd, zoals de aggregrate root en mogelijke Value Objects,
-bijvoorbeeld enige ordergegevens of klantengegevens die specifiek aan een order gekoppeld zijn.
-Onze microservice verbindt met de database via onze “database.py” file.
-Via deze file heeft de microservice een eigen database connectie,
-wat betekent dat het alleen binnen deze service de data beheert en niet haar eigen tabellen/data deelt met andere microservices.
+<img src="Context-Map.jpg" alt="Context Map" width="600"/></br>
 
-Door de orderlogica te isoleren specifiek in zo een microservice en DDD principes er op toe te passen,
-voorkom je dat wijzigingen in klantenservice en of warehouseservice invloed hebben op orderprocessen.
+In elke service worden de DDD-patronen gedefinieerd voor die specifieke BC, zoals de aggregrate root en mogelijke Value Objects. 
+Bijvoorbeeld: enige ordergegevens of klantengegevens die specifiek aan een order gekoppeld zijn.
+Elke microservice heeft een database connectie met zijn eigen tabellen,
+hiermee willen we bereiken dat iedere microservice verantwoorldeijk is voor zijn eigen data beheer. Meerdere databases is teveel overhead, in plaats daarvan kiezen wij voor 
+verschillende tabellen in 1 database. 
+
+Wij isoleren de logica van verschillende processen in microservices en passen de DDD principes er op toe.
+Hierdoor voorkome je dat wijzigingen in klantenservice of warehouseservice invloed hebben op orderprocessen.
 Dit verhoogt niet alleen de onderhoudbaarheid, maar zorgt er ook voor dat het ontwikkelteam van order-management onafhankelijk van anderen wijzigingen kan uitvoeren.
 
 # Eventual Consistency
