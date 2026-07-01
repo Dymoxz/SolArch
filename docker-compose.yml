@@ -25,7 +25,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  # ---------------- ORDER ----------------
   order-api:
     build: ./order-management
     container_name: ball_order_api
@@ -34,7 +33,9 @@ services:
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
       - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
-    depends_on: [rabbitmq, db]
+    depends_on:
+      - rabbitmq
+      - db
     volumes:
       - ./order-management/app:/app
     restart: unless-stopped
@@ -46,12 +47,13 @@ services:
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
       - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
-    depends_on: [rabbitmq, db]
+    depends_on:
+      - rabbitmq
+      - db
     volumes:
       - ./order-management/app:/app
     restart: unless-stopped
 
-  # ---------------- PRODUCT ----------------
   product-api:
     build: ./product-management
     container_name: ball_product_api
@@ -60,9 +62,11 @@ services:
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
       - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
-    depends_on: [rabbitmq, db]
+    depends_on:
+      - rabbitmq
+      - db
     volumes:
-    - ./product-management/app:/app
+      - ./product-management/app:/app
     restart: unless-stopped
 
   product-consumer:
@@ -72,12 +76,13 @@ services:
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
       - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
-    depends_on: [rabbitmq, db]
+    depends_on:
+      - rabbitmq
+      - db
     volumes:
       - ./product-management/app:/app
     restart: unless-stopped
 
-  # ---------------- CUSTOMER ----------------
   customer-service:
     build: ./customer-service
     container_name: ball_customer_service
@@ -88,13 +93,14 @@ services:
       - NODE_ENV=production
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
       - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
-    depends_on: [rabbitmq, db]
+    depends_on:
+      - rabbitmq
+      - db
     volumes:
       - ./customer-service/app:/app
       - /app/node_modules
     restart: unless-stopped
 
-  # ---------------- WAREHOUSE ----------------
   warehouse-api:
     build: ./warehouse-management
     container_name: ball_warehouse_api
@@ -103,7 +109,9 @@ services:
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
       - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
-    depends_on: [rabbitmq, db]
+    depends_on:
+      - rabbitmq
+      - db
     volumes:
       - ./warehouse-management/app:/app
     restart: unless-stopped
@@ -115,12 +123,13 @@ services:
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
       - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
-    depends_on: [rabbitmq, db]
+    depends_on:
+      - rabbitmq
+      - db
     volumes:
       - ./warehouse-management/app:/app
     restart: unless-stopped
 
-  # ---------------- SHIPPING ----------------
   shipping-api:
     build: ./shipping-management
     container_name: ball_shipping_api
@@ -129,7 +138,9 @@ services:
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
       - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
-    depends_on: [rabbitmq, db]
+    depends_on:
+      - rabbitmq
+      - db
     volumes:
       - ./shipping-management/app:/app
     restart: unless-stopped
@@ -141,9 +152,40 @@ services:
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
       - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
-    depends_on: [rabbitmq, db]
+    depends_on:
+      - rabbitmq
+      - db
     volumes:
       - ./shipping-management/app:/app
+    restart: unless-stopped
+
+  payment-api:
+    build: ./payment-management
+    container_name: ball_payment_api
+    ports:
+      - "8004:8000"
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on:
+      - rabbitmq
+      - db
+    volumes:
+      - ./payment-management/app:/app
+    restart: unless-stopped
+
+  payment-consumer:
+    build: ./payment-management
+    container_name: ball_payment_consumer
+    command: python /app/consumer.py
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on:
+      - rabbitmq
+      - db
+    volumes:
+      - ./payment-management/app:/app
     restart: unless-stopped
 
 volumes:

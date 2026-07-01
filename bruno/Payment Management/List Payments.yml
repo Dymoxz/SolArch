@@ -1,11 +1,11 @@
 info:
-  name: Delete Product
+  name: List Payments
   type: http
-  seq: 4
+  seq: 5
 
 http:
-  method: DELETE
-  url: http://localhost:8001/products/{{productId}}
+  method: GET
+  url: "{{pa_url}}/payments"
   auth: inherit
 
 settings:

@@ -1,0 +1,26 @@
+info:
+  name: Update Payment
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{pa_url}}/payments/{{productId}}"
+  body:
+    type: json
+    data: |-
+      {
+        "id": "82c434ce-3613-4be6-8828-b9709fbaf455",
+        "order_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "customer_id": "11111111-1111-1111-1111-111111111111",
+        "amount": 160,
+        "method": "ForwardPay",
+        "status": "Initiated"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

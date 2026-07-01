@@ -6,7 +6,7 @@ import os
 
 from models import ProductCreate, ProductResponse
 
-app = FastAPI(title="Product Service")
+app = FastAPI(title="Ball.com - Product Service API")
 
 MOCK_QUERY_DB: dict[UUID, dict] = {}
 

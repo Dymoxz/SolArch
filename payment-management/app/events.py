@@ -1,0 +1,5 @@
+PaymentInitiated = "PaymentInitiated"
+PaymentAuthorized = "PaymentAuthorized"
+PaymentCaptured = "PaymentCaptured"
+PaymentFailed = "PaymentFailed"
+InvoiceGenerated = "InvoiceGenerated"
