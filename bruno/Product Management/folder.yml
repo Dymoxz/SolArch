@@ -1,0 +1,7 @@
+info:
+  name: Product Management
+  type: folder
+  seq: 6
+
+request:
+  auth: inherit

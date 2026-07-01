@@ -1,0 +1,27 @@
+info:
+  name: Update Order
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}orders/{{order_id}}"
+  body:
+    type: json
+    data: |-
+      {
+        "customer_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+        "items": [
+          {
+            "product_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+            "quantity": 10
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

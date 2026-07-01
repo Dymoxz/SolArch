@@ -1,0 +1,4 @@
+wanneer order geplaatst -> order management stuurt order naar warehouse management
+in warehouse management kan de status van de order worden bijgewerkt
+
+wanneer order verwerkt is -> order management stuurt de order naar shipping management

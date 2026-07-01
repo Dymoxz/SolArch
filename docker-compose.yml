@@ -3,8 +3,8 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: ball_rabbitmq
     ports:
-      - "5672:5672" # De standaard AMQP poort voor je code
-      - "15672:15672" # De RabbitMQ Management UI (Dashboard)
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin_password
@@ -25,34 +25,125 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  # ---------------- ORDER ----------------
   order-api:
     build: ./order-management
     container_name: ball_order_api
     ports:
       - "8000:8000"
     environment:
-      # Verwijzingen naar de andere containers binnen het Docker netwerk
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
       - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
-    depends_on:
-      - rabbitmq
-      - db
+    depends_on: [rabbitmq, db]
     volumes:
-      - ./order-management/app:/app # Hot-reloading: koppelt je lokale /app map aan de container
+      - ./order-management/app:/app
     restart: unless-stopped
+
   order-consumer:
     build: ./order-management
     container_name: ball_order_consumer
-    # Overrides the default Dockerfile entrypoint/CMD to run the background worker loop
     command: python /app/consumer.py
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
       - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
-    depends_on:
-      - rabbitmq
-      - db
+    depends_on: [rabbitmq, db]
     volumes:
-      - ./order-management/app:/app # Also supports hot-reloading if you make updates to consumer.py!
+      - ./order-management/app:/app
+    restart: unless-stopped
+
+  # ---------------- PRODUCT ----------------
+  product-api:
+    build: ./product-management
+    container_name: ball_product_api
+    ports:
+      - "8001:8000"
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on: [rabbitmq, db]
+    volumes:
+    - ./product-management/app:/app
+    restart: unless-stopped
+
+  product-consumer:
+    build: ./product-management
+    container_name: ball_product_consumer
+    command: python /app/consumer.py
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on: [rabbitmq, db]
+    volumes:
+      - ./product-management/app:/app
+    restart: unless-stopped
+
+  # ---------------- CUSTOMER ----------------
+  customer-service:
+    build: ./customer-service
+    container_name: ball_customer_service
+    command: node /app/server.js
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on: [rabbitmq, db]
+    volumes:
+      - ./customer-service/app:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+  # ---------------- WAREHOUSE ----------------
+  warehouse-api:
+    build: ./warehouse-management
+    container_name: ball_warehouse_api
+    ports:
+      - "8002:8001"
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on: [rabbitmq, db]
+    volumes:
+      - ./warehouse-management/app:/app
+    restart: unless-stopped
+
+  warehouse-consumer:
+    build: ./warehouse-management
+    container_name: ball_warehouse_consumer
+    command: python /app/consumer.py
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on: [rabbitmq, db]
+    volumes:
+      - ./warehouse-management/app:/app
+    restart: unless-stopped
+
+  # ---------------- SHIPPING ----------------
+  shipping-api:
+    build: ./shipping-management
+    container_name: ball_shipping_api
+    ports:
+      - "8003:8002"
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on: [rabbitmq, db]
+    volumes:
+      - ./shipping-management/app:/app
+    restart: unless-stopped
+
+  shipping-consumer:
+    build: ./shipping-management
+    container_name: ball_shipping_consumer
+    command: python /app/consumer.py
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on: [rabbitmq, db]
+    volumes:
+      - ./shipping-management/app:/app
     restart: unless-stopped
 
 volumes:

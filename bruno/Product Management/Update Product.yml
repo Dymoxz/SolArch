@@ -1,0 +1,26 @@
+info:
+  name: Update Product
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{pd_url}}/products/{{productId}}"
+  body:
+    type: json
+    data: |-
+      {
+        "id": "7cf331f2-9721-46b2-b763-c14f359d2691",
+        "name": "Appels",
+        "price": 200,
+        "inventory": 10,
+         "supplier_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "status": "PendingApproval"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

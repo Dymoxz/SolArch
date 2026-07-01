@@ -49,6 +49,11 @@ def create_order(order_data: models.OrderCreate, db: Session = Depends(get_db)):
     }
 
 
+@app.get("/orders", response_model=List[models.OrderResponse])
+def get_orders(db: Session = Depends(get_db)):
+    return db.query(models.DBOrderView).all()
+
+
 @app.get("/orders/{order_id}", response_model=models.OrderResponse)
 def get_order(order_id: UUID, db: Session = Depends(get_db)):
     order_view = db.query(models.DBOrderView).filter(models.DBOrderView.id == order_id).first()

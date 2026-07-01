@@ -1,0 +1,10 @@
+name: Local
+variables:
+  - name: base_url
+    value: http://localhost:8000
+  - name: cs_url
+    value: http://localhost:3000
+  - name: product_id
+    value: 7737e2fb-152a-4939-982d-c2aec0934fde
+  - name: pd_url
+    value: http://localhost:8001

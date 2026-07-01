@@ -1,0 +1,42 @@
+info:
+  name: Create Order
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/orders"
+  body:
+    type: json
+    data: |-
+      {
+        "customer_id": "123e4567-e89b-12d3-a456-426614174000",
+        "items": [
+          {
+            "product_id": "987e6543-e21b-34d5-c654-426614174111",
+            "quantity": 2
+          }
+        ]
+      }
+  auth: inherit
+
+runtime:
+  variables:
+    - name: base_url
+      value: http://localhost:8000
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201) {
+          const data = res.getBody();
+          
+          if (data && data.id) {
+            bru.setVar("order_id", data.id);
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

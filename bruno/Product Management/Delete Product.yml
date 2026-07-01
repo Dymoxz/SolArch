@@ -1,0 +1,24 @@
+info:
+  name: Delete Product
+  type: http
+  seq: 4
+
+http:
+  method: DELETE
+  url: http://localhost:8001/products/{{productId}}
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Banaan",
+        "price": 100,
+        "inventory": 10,
+        "supplier_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
