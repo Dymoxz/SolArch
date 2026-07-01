@@ -21,9 +21,14 @@ Dit verhoogt niet alleen de onderhoudbaarheid, maar zorgt er ook voor dat het on
 
 # Eventual Consistency
 
-Dit proces start in "Main.py". Wanneer een klant een bestelling plaatst
-via een POST request, valideert "Main.py" dit, slaat de order vervolgens op
-via "database.py" en stuurt een succesvolle statusmelding terug naar de gebruiker
+Dit proces start in "main.py", waar de endpoints in staan gedefinieerd.
+Wanneer een klant een POST request uitvoert, wordt de inkomende data gevalideerd via "models.py".
+Als de validatie slaagt, wordt er in "main.py" een unieke id gegenereerd
+en wordt de data opgeslagen via de SQLAlchemy sessie vanuit "database.py".
+Daarnaast wordt er in "messaging.py" een domain event aangemaakt en gepubliceerd.
+Deze event wordt vervolgens ontvangen door andere services via hun "consumer.py" bestanden.
+En tot slot stuurt "main.py" een HTTP-response terug naar de gebruiker met de opgeslagen data en een statuscode.
+
 
 # EDA (Event Driven Architecture) based on messaging
 
@@ -55,6 +60,11 @@ In plaats van dat een update request in de database simpelweg de status van een 
 Wij passen dus ook nooit een event aan, als je de status wijzigt maakt hij een nieuw event aan en update hij de "order_view" tabel zodat alles consistent blijft.
 
 # Enterprise Integration Patterns
+
+Enterprise Integration Patterns worden op dit project toegepast door middel van RabbitMQ als centrale message bus.
+Alle microservices van dit project communiceren niet direct met elkaar, maar via gepubliceerde events.
+Andere services ontvangen deze events door middel van hun eigen "consumer.py" bestanden en verwerken deze om hun eigen models of database bij te werken, zodat er geen directe koppeling hoeft te zijn tussen de services en ze dus onafhankelijk van elkaar blijven.
+Dit zorgt dus voor communicatie tussen de services en helpt in de schaalbaarheid van het project, omdat elke service alleen reageert op events die relevant zijn voor hun eigen domein.
 
 # Containerization of your implementation
 
