@@ -9,9 +9,7 @@ const server = createServer((req, res) => {
     handleRoutes(req, res);
 });
 
-server.listen(port, hostname, () => {
-    console.log(`Customer Service microserver listening at http://localhost:${port}/`);
-});
+
 
 
 const { Pool } = require('pg');
