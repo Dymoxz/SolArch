@@ -55,6 +55,65 @@ services:
       - ./order-management/app:/app # Also supports hot-reloading if you make updates to consumer.py!
     restart: unless-stopped
 
+  warehouse-api:
+    build: ./warehouse-management
+    container_name: ball_warehouse_api
+    ports:
+      - "8001:8001"
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on:
+      - rabbitmq
+      - db
+    volumes:
+      - ./warehouse-management/app:/app
+    restart: unless-stopped
+
+  warehouse-consumer:
+    build: ./warehouse-management
+    container_name: ball_warehouse_consumer
+    command: python /app/consumer.py
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on:
+      - rabbitmq
+      - db
+    volumes:
+      - ./warehouse-management/app:/app
+    restart: unless-stopped
+
+  shipping-api:
+    build: ./shipping-management
+    container_name: ball_shipping_api
+    ports:
+      - "8002:8002"
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on:
+      - rabbitmq
+      - db
+    volumes:
+      - ./shipping-management/app:/app
+    restart: unless-stopped
+
+  shipping-consumer:
+    build: ./shipping-management
+    container_name: ball_shipping_consumer
+    command: python /app/consumer.py
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on:
+      - rabbitmq
+      - db
+    volumes:
+      - ./shipping-management/app:/app
+    restart: unless-stopped
+
 volumes:
   rabbitmq_data:
   postgres_data:
+
