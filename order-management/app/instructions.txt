@@ -1,0 +1,13 @@
+
+#Order bestaat uit: id, customerId, list van productId's, amount of said productId's
+
+#Post,put,delete method voor het aanmaken van een Order, deze moet worden opgeslagen in een event store
+#vervolgens moet via een event bus de command naar de Query DB kant van order
+
+
+
+#Get method voor het aanmaken van een Order uit andere db (ander management/ander sub-mapje)
+
+
+#CQRS HIER
+
