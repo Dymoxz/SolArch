@@ -54,6 +54,24 @@ services:
     volumes:
       - ./order-management/app:/app # Also supports hot-reloading if you make updates to consumer.py!
     restart: unless-stopped
+  customer-service:
+    build: ./customer-service
+    container_name: ball_customer_service
+    command: node /app/server.js
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on:
+      - rabbitmq
+      - db
+    volumes:
+      - ./customer-service/app:/app # Optional: allows hot-reloading for server.js if your Dockerfile is configured for dev
+      - /app/node_modules
+    restart: unless-stopped
+
 
 volumes:
   rabbitmq_data:
