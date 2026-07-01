@@ -26,8 +26,12 @@ allemaal bij kunnen houden.
 Opvolgend op CQRS hebben wij, zoals te lezen was, event sourcing toegepast bij de Order Service. We slaan de events op in een tabel in PostgreSQL, met de tijd en alle benodigde data. 
 Wij passen dus ook nooit een event aan, als je de status wijzigt maakt hij een nieuw event aan en update hij de "order_view" tabel zodat alles consistent blijft.  
 
-# Enterprise Integration Patterns
+Event sourcing bevindt zich tussen de interactie van "database.py" en "models.py".
+In plaats van dat een update request in de database simpelweg de status van een order overschrijft van bijvoorbeeld
+"In behandeling" naar "Processed", slaat "database.py" een nieuwe rij op in een event tabel.
+Als een order moet worden geladen haalt "database.py" alle "past events" op voor dat specifieke order-id. Hierna wordt de huidige status weer chronologisch gereconstrueerd binnen de klassen in "models.py".
 
+# Enterprise Integration Patterns
 
 # Containerization of your implementation
 Het project is gecontaineriseerd met Docker met gebruik van docker compose. Elke microservice / API leeft in een eigen container. Dit zijn vooral Python FastAPI services, met een enkele NodeJS service, deze combinatie van talen laat de voordelen van containerisatie zien. Elke API container heeft ook een eigen consumer container die op de achtergrondevents van RabbitMQ consumeert en verwerkt.
