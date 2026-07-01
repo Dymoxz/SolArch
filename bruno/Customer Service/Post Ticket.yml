@@ -1,0 +1,23 @@
+info:
+  name: Post Ticket
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{cs_url}}/customer-service"
+  body:
+    type: json
+    data: |-
+      {
+        "topic": "Late Order Delivery",
+        "body": "My package hasn't arrived yet. Can you check its transit status?",
+        "user_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

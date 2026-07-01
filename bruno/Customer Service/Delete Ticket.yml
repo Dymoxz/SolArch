@@ -1,0 +1,19 @@
+info:
+  name: Delete Ticket
+  type: http
+  seq: 4
+
+http:
+  method: DELETE
+  url: "{{cs_url}}/customer-service/:id"
+  params:
+    - name: id
+      value: "1"
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
