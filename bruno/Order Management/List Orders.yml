@@ -1,11 +1,11 @@
 info:
-  name: Delete Order
+  name: List Orders
   type: http
-  seq: 4
+  seq: 5
 
 http:
-  method: DELETE
-  url: "{{base_url}}/orders/47916d7c-2c67-4b1a-ad9c-38478e142c39"
+  method: GET
+  url: "{{base_url}}/orders"
   auth: inherit
 
 settings:

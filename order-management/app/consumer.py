@@ -5,6 +5,7 @@ import pika
 from sqlalchemy.orm import Session
 from database import SessionLocal
 import models
+from messaging import publish_order_event
 
 RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://admin:admin_password@rabbitmq:5672/")
 
@@ -36,6 +37,32 @@ def process_event(event_msg: dict):
                 db.commit()
                 print(f" [✓] Deleted Read View for Order {order_id}")
 
+        elif event_type == "WarehouseOrderProcessed":
+            # 1. Append a Processed Event to the Event Store (Write Side)
+            db_event = models.DBOrderEvent(
+                order_id=order_id,
+                event_type="OrderProcessed",
+                payload=data
+            )
+            db.add(db_event)
+            db.commit()
+            print(f" [✓] Appended OrderProcessed event for Order {order_id}")
+
+            # 2. Update status in Read View
+            db_view = db.query(models.DBOrderView).filter(models.DBOrderView.id == order_id).first()
+            if db_view:
+                db_view.status = "Processed"
+                db.commit()
+                print(f" [✓] Updated Read View status for Order {order_id} to Processed")
+
+                # 3. Publish order to Shipping Management
+                shipping_payload = {
+                    "customer_id": str(db_view.customer_id),
+                    "items": db_view.items
+                }
+                publish_order_event("OrderSentToShipping", order_id, shipping_payload)
+                print(f" [✓] Published OrderSentToShipping event for Order {order_id}")
+
     except Exception as e:
         db.rollback()
         print(f" [✗] Error processing event: {e}")
@@ -54,6 +81,7 @@ def main():
     channel.queue_declare(queue=queue_name, durable=True)
 
     channel.queue_bind(exchange='order_events_exchange', queue=queue_name, routing_key="order.*")
+    channel.queue_bind(exchange='order_events_exchange', queue=queue_name, routing_key="warehouse.*")
 
     def callback(ch, method, properties, body):
         try:
