@@ -20,6 +20,21 @@ http:
       }
   auth: inherit
 
+runtime:
+  variables:
+    - name: base_url
+      value: http://localhost:8000
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201) {
+          const data = res.getBody();
+          
+          if (data && data.id) {
+            bru.setVar("order_id", data.id);
+          }
+        }
+
 settings:
   encodeUrl: true
   timeout: 0

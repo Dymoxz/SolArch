@@ -5,11 +5,7 @@ info:
 
 http:
   method: GET
-  url: "{{base_url}}/orders/:uuid"
-  params:
-    - name: uuid
-      value: 123e4567-e89b-12d3-a456-426614174000
-      type: path
+  url: "{{base_url}}/orders/{{order_id}}"
   auth: inherit
 
 settings:
