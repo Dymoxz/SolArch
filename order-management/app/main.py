@@ -1,109 +1,77 @@
 import os
 from typing import List
 from uuid import UUID, uuid4
-import pika
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
+from sqlalchemy.orm import Session
 
-
-from orders import OrderItem, OrderCreate, OrderResponse
+import models
+from database import engine, get_db
 from messaging import publish_order_event
+
+# Create the database tables if they don't exist yet
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Ball.com - Order Management API")
 
-# Mock In-Memory Databases to separate concerns
-MOCK_EVENT_STORE = {}  # Write Side
-MOCK_QUERY_DB = {}  # Read Side (Populated asynchronously via Event Bus in real life)
 
-
-@app.get("/")
-def read_root():
-    return {"message": "Order Management API is online!"}
-
-
-@app.get("/health/rabbitmq")
-def check_rabbitmq():
-    rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
-    try:
-        parameters = pika.URLParameters(rabbitmq_url)
-        connection = pika.BlockingConnection(parameters)
-        connection.close()
-        return {"status": "RabbitMQ is verbonden"}
-    except Exception as e:
-        return {"status": "Kan geen verbinding maken met RabbitMQ", "error": str(e)}
-
-
-# --- COMMAND SIDE (POST, PUT, DELETE) ---
-
-@app.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
-def create_order(order_data: OrderCreate):
-    # Business Rule: 1 to 20 items total in the order
+@app.post("/orders", response_model=models.OrderResponse, status_code=status.HTTP_201_CREATED)
+def create_order(order_data: models.OrderCreate, db: Session = Depends(get_db)):
     total_items = sum(item.quantity for item in order_data.items)
     if not (1 <= total_items <= 20):
         raise HTTPException(status_code=400, detail="An order must contain between 1 and 20 items total.")
 
     order_id = uuid4()
+    serialized_items = [item.model_dump() for item in order_data.items]
 
-    # 1. Save to Event Store (Command side)
+    for item in serialized_items:
+        item["product_id"] = str(item["product_id"])
+
     event_payload = {
         "customer_id": str(order_data.customer_id),
-        "items": [item.model_dump() for item in order_data.items],
-        "status": "Created"
+        "status": "Created",
+        "items": serialized_items
     }
-    MOCK_EVENT_STORE[order_id] = [{"event_type": "OrderCreated", "data": event_payload}]
+    db_event = models.DBOrderEvent(
+        order_id=order_id,
+        event_type="OrderCreated",
+        payload=event_payload
+    )
+    db.add(db_event)
+    db.commit()
 
-    # 2. Publish to Event Bus (RabbitMQ)
     publish_order_event("OrderCreated", order_id, event_payload)
 
-    # For demo purposes, we eagerly write to the Query DB so GET works immediately
-    MOCK_QUERY_DB[order_id] = {**event_payload, "id": order_id}
-
-    return MOCK_QUERY_DB[order_id]
-
-
-@app.put("/orders/{order_id}", response_model=OrderResponse)
-def update_order(order_id: UUID, order_data: OrderCreate):
-    if order_id not in MOCK_QUERY_DB:
-        raise HTTPException(status_code=404, detail="Order not found")
-
-    event_payload = {
-        "items": [item.model_dump() for item in order_data.items]
+    return {
+        "id": order_id,
+        "customer_id": order_data.customer_id,
+        "status": "Created",
+        "items": order_data.items
     }
 
-    # Append event to store
-    MOCK_EVENT_STORE[order_id].append({"event_type": "OrderUpdated", "data": event_payload})
 
-    # Publish update event
-    publish_order_event("OrderUpdated", order_id, event_payload)
-
-    # Update read side
-    MOCK_QUERY_DB[order_id]["items"] = order_data.items
-    return MOCK_QUERY_DB[order_id]
+@app.get("/orders/{order_id}", response_model=models.OrderResponse)
+def get_order(order_id: UUID, db: Session = Depends(get_db)):
+    order_view = db.query(models.DBOrderView).filter(models.DBOrderView.id == order_id).first()
+    if not order_view:
+        raise HTTPException(status_code=404, detail="Order not found in Read View")
+    return order_view
 
 
 @app.delete("/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_order(order_id: UUID):
-    if order_id not in MOCK_QUERY_DB:
+def delete_order(order_id: UUID, db: Session = Depends(get_db)):
+    exists = db.query(models.DBOrderEvent).filter(models.DBOrderEvent.order_id == order_id).first()
+    if not exists:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    # Append Cancelled event to store
-    MOCK_EVENT_STORE[order_id].append({"event_type": "OrderCancelled", "data": {}})
+    # 1. Append a Cancellation Event to the Event Store (Write Side)
+    db_event = models.DBOrderEvent(
+        order_id=order_id,
+        event_type="OrderCancelled",
+        payload={}
+    )
+    db.add(db_event)
+    db.commit()
 
-    # Publish cancellation
+    # 3. Publish cancellation notice to Event Bus
     publish_order_event("OrderCancelled", order_id, {})
-
-    # Remove from query view
-    del MOCK_QUERY_DB[order_id]
     return
-
-
-# --- QUERY SIDE (GET) ---
-
-@app.get("/orders/{order_id}", response_model=OrderResponse)
-def get_order(order_id: UUID):
-    """
-    Fetches the order view from the Read/Query Database (Materialized view).
-    """
-    order = MOCK_QUERY_DB.get(order_id)
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found in Query DB")
-    return order

@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -41,6 +39,20 @@ services:
       - db
     volumes:
       - ./order-management/app:/app # Hot-reloading: koppelt je lokale /app map aan de container
+    restart: unless-stopped
+  order-consumer:
+    build: ./order-management
+    container_name: ball_order_consumer
+    # Overrides the default Dockerfile entrypoint/CMD to run the background worker loop
+    command: python /app/consumer.py
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+    depends_on:
+      - rabbitmq
+      - db
+    volumes:
+      - ./order-management/app:/app # Also supports hot-reloading if you make updates to consumer.py!
     restart: unless-stopped
 
 volumes:
