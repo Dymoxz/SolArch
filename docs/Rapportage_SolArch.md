@@ -21,14 +21,7 @@ Dit verhoogt niet alleen de onderhoudbaarheid, maar zorgt er ook voor dat het on
 
 # Eventual Consistency
 
-Dit proces start in "main.py", waar de endpoints in staan gedefinieerd.
-Wanneer een klant een POST request uitvoert, wordt de inkomende data gevalideerd via "models.py".
-Als de validatie slaagt, wordt er in "main.py" een unieke id gegenereerd
-en wordt de data opgeslagen via de SQLAlchemy sessie vanuit "database.py".
-Daarnaast wordt er in "messaging.py" een domain event aangemaakt en gepubliceerd.
-Deze event wordt vervolgens ontvangen door andere services via hun "consumer.py" bestanden.
-En tot slot stuurt "main.py" een HTTP-response terug naar de gebruiker met de opgeslagen data en een statuscode.
-
+Eventual consistency betekent dat data op verschillende nodes asynchroon consistent gemaakt wordt. In onze applicatie is dit van toepassing door het gebruik van consumers en een message bus. Als een service een wijziging maakt, publiceert deze een message op de message bus, wat vervolgens door andere services wordt afgehandeld. Omdat we ook gebruik maken van CQRS, worden de messages gebruikt bijvoorbeeld om de state van de read table te synchroniseren met de state van de write table. Het gebruiken van een message bus, en dus eventual consistency, heeft een groot voordeel wanneer een service down gaat. Als de service dan messages zou moeten ontvangen blijven die in de bus totdat de service weer online is en de berichten kan verwerken. Dit systeem zorgt in principe voor een lagere data consistentie maar garandeerd een hoger niveau van beschikbaarheid.
 
 # EDA (Event Driven Architecture) based on messaging
 
@@ -63,11 +56,13 @@ Wij passen dus ook nooit een event aan, als je de status wijzigt maakt hij een n
 
 Enterprise Integration Patterns worden op dit project toegepast door middel van RabbitMQ als centrale message bus.
 Alle microservices van dit project communiceren niet direct met elkaar, maar via gepubliceerde events.
-Andere services ontvangen deze events door middel van hun eigen "consumer.py" bestanden en verwerken deze om hun eigen models of database bij te werken, zodat er geen directe koppeling hoeft te zijn tussen de services en ze dus onafhankelijk van elkaar blijven.
+Andere services ontvangen deze events door middel van hun eigen consumer en verwerken deze om hun eigen models of database bij te werken, zodat er geen directe koppeling hoeft te zijn tussen de services en ze dus onafhankelijk van elkaar blijven.
 Dit zorgt dus voor communicatie tussen de services en helpt in de schaalbaarheid van het project, omdat elke service alleen reageert op events die relevant zijn voor hun eigen domein.
 
 # Containerization of your implementation
 
-Het project is gecontaineriseerd met Docker met gebruik van docker compose. Elke microservice / API leeft in een eigen container. Dit zijn vooral Python FastAPI services, met een enkele NodeJS service, deze combinatie van talen laat de voordelen van containerisatie zien. Elke API container heeft ook een eigen consumer container die op de achtergrondevents van RabbitMQ consumeert en verwerkt.
+Het project is gecontaineriseerd met Docker met gebruik van docker compose, waar elke microservice een eigen Dockerfile heeft. Elke microservice / API leeft in een eigen container. Dit zijn vooral Python FastAPI services, met een enkele NodeJS service, deze combinatie van talen laat de voordelen van containerisatie zien. Elke API container heeft ook een eigen consumer container die op de achtergrondevents van RabbitMQ consumeert en verwerkt.
 
 Naast API services zijn er ook 2 gedeelde containers, RabbitMQ en PostgresDB. Deze worden gebruikt voor het opstellen van een EDA (Event Driven Architecture) met gebruik van messaging en het opslaan van event data.
+
+Elk van deze containers zijn volledig autonoom waardoor veranderingen in een container niet direct invloed heeft op andere containers. Daarnaast minimaliseerd dit ook de impact van bijvoorbeeld een container die crashed.
