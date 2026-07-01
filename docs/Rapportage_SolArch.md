@@ -15,10 +15,16 @@ Door de orderlogica te isoleren specifiek in zo een microservice en DDD principe
 
 
 # CQRS (Command Query Responsibility Segregation)
-
+CQRS is het scheiden van verantwoordelijkheid van de Commands & Queries op een data model, 
+we passen dit toe bij de order-management. De commands: POST, PUT, DELETE worden eerst verstuurd naar een event store waar het als een event wordt opgeslagen. Hiermee kan je 
+gemakkelijker de geschiedenis bijhouden van orders. Vervolgens wordt het de RabbitMQ bus opgezet en opgepakt door een Consumer die het kan denormalizeren en in de "order_view" tabel zet.
+De "order_view" tabel is voor het lezen van de order data. Dit is voor betere performance. Wij hebben gekozen dit toe te passen bij de Order Service, omdat je veel order gegevens wilt 
+bekijken, aanpassen en aanmaken. Dit maakt het ook makkelijk bij te houden wat er met een order gebeurt, een order gaat natuurlijk door een warehouse, delivering service, en dit moet je 
+allemaal bij kunnen houden.
 
 # Event Sourcing
-
+Opvolgend op CQRS hebben wij, zoals te lezen was, event sourcing toegepast bij de Order Service. We slaan de events op in een tabel in PostgreSQL, met de tijd en alle benodigde data. 
+Wij passen dus ook nooit een event aan, als je de status wijzigt maakt hij een nieuw event aan en update hij de "order_view" tabel zodat alles consistent blijft.  
 
 # Enterprise Integration Patterns
 
