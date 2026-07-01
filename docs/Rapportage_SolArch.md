@@ -8,7 +8,6 @@ De microservices worden direct aangemaakt in de root folder van het project.
 Deze geïsoleerde services functioneren als één Bounded Context.
 Deze BC’s halen we uit de Context Map die we hebben gemaakt doot te kijken naar de casus.
 
-
 Binnen de service kun je routeren naar de “app/” map waar onze “models.py” te vinden is.
 Binnen deze file zijn de DDD-patronen gedefinieerd, zoals de aggregrate root en mogelijke Value Objects,
 bijvoorbeeld enige ordergegevens of klantengegevens die specifiek aan een order gekoppeld zijn.
@@ -27,6 +26,16 @@ via een POST request, valideert "Main.py" dit, slaat de order vervolgens op
 via "database.py" en stuurt een succesvolle statusmelding terug naar de gebruiker
 
 # EDA (Event Driven Architecture) based on messaging
+
+EDA bevindt zich in 2 specifieke bestanden: "messaging.py" en "consumer.py".
+In "messaging.py" bevindt zich de logica om de verbinding te maken met de message broker (in dit geval RabbitMQ)
+en om events te publiceren, zoals een OrderCreated of OrderCancelled.
+Het bestand "consumer.py" is in dit geval de listener van deze service.
+Deze draait op de achtergrond om binnenkomende requests van andere microservices op te vangen, die vervolgens in de database worden verwerkt.
+
+EDA is toegepast zodat order-management niet direct hoeft te laten weten welke andere services bestaan of op dat moment online runnen.
+Als de payment service tijdelijk niet online is, plaatst de message broker de request in de wachtrij.
+Zodra deze service weer online komt te staan, wordt de request alsnog verwerkt zonder dat er data verloren gaat.
 
 # CQRS (Command Query Responsibility Segregation)
 
