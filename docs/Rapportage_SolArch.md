@@ -48,13 +48,11 @@ allemaal bij kunnen houden.
 
 # Event Sourcing
 
-Opvolgend op CQRS hebben wij, zoals te lezen was, event sourcing toegepast bij de Order Service. We slaan de events op in een tabel in PostgreSQL, met de tijd en alle benodigde data.
-Wij passen dus ook nooit een event aan, als je de status wijzigt maakt hij een nieuw event aan en update hij de "order_view" tabel zodat alles consistent blijft.
-
+Opvolgend op CQRS hebben wij, zoals te lezen was, event sourcing toegepast bij de Order Service.
 Event sourcing bevindt zich tussen de interactie van "database.py" en "models.py".
 In plaats van dat een update request in de database simpelweg de status van een order overschrijft van bijvoorbeeld
-"In behandeling" naar "Processed", slaat "database.py" een nieuwe rij op in een event tabel.
-Als een order moet worden geladen haalt "database.py" alle "past events" op voor dat specifieke order-id. Hierna wordt de huidige status weer chronologisch gereconstrueerd binnen de klassen in "models.py".
+"In behandeling" naar "Processed", worden de events opgeslagen in een tabel in PostgreSQL, met de tijd en alle benodigde data.
+Wij passen dus ook nooit een event aan, als je de status wijzigt maakt hij een nieuw event aan en update hij de "order_view" tabel zodat alles consistent blijft.
 
 # Enterprise Integration Patterns
 
