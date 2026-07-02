@@ -6,10 +6,15 @@ info:
 http:
   method: GET
   url: "{{warehouse_url}}/warehouse/orders"
-  body: none
   auth: inherit
 
 runtime:
   variables:
     - name: warehouse_url
-      value: http://localhost:8001
+      value: http://localhost:8002
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
