@@ -5,7 +5,7 @@ import pika
 from sqlalchemy.orm import Session
 
 import models
-from database import SessionLocal, engine
+from database import SessionLocalWrite, SessionLocalRead, write_engine, read_engine
 
 RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://admin:admin_password@rabbitmq:5672/")
 
@@ -16,27 +16,42 @@ def process_event(event_msg: dict):
 
     print(f" [*] Shipping Consumer processing event: {event_type} for Order: {order_id}")
 
-    db: Session = SessionLocal()
+    write_db: Session = SessionLocalWrite()
+    read_db: Session = SessionLocalRead()
     try:
         if event_type == "OrderSentToShipping":
-            # Create a new shipment
+            # Create a new shipment on command side (Command DB)
             db_shipment = models.DBShipment(
                 order_id=order_id,
                 status="ReadyForShipping"
             )
-            db.add(db_shipment)
-            db.commit()
-            print(f" [✓] Created shipment for Order {order_id}")
+            write_db.add(db_shipment)
+            write_db.commit()
+            print(f" [✓] Created shipment for Order {order_id} in shipments (Command)")
+
+            # Create a new shipment on query side (Query DB)
+            db_view = models.DBShipmentView(
+                id=db_shipment.id,
+                order_id=order_id,
+                status="ReadyForShipping",
+                created_at=db_shipment.created_at
+            )
+            read_db.add(db_view)
+            read_db.commit()
+            print(f" [✓] Created shipment for Order {order_id} in shipment_views (Query)")
 
     except Exception as e:
-        db.rollback()
+        write_db.rollback()
+        read_db.rollback()
         print(f" [✗] Error processing event in Shipping Consumer: {e}")
     finally:
-        db.close()
+        write_db.close()
+        read_db.close()
 
 def main():
     # Make sure tables exist
-    models.Base.metadata.create_all(bind=engine)
+    models.WriteBase.metadata.create_all(bind=write_engine)
+    models.ReadBase.metadata.create_all(bind=read_engine)
     
     parameters = pika.URLParameters(RABBITMQ_URL)
     connection = pika.BlockingConnection(parameters)

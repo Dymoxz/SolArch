@@ -5,7 +5,7 @@ import pika
 from sqlalchemy.orm import Session
 
 import models
-from database import SessionLocal, engine
+from database import SessionLocalWrite, SessionLocalRead, write_engine, read_engine
 
 RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://admin:admin_password@rabbitmq:5672/")
 
@@ -16,36 +16,73 @@ def process_event(event_msg: dict):
 
     print(f" [*] Warehouse Consumer processing event: {event_type} for Order: {order_id}")
 
-    db: Session = SessionLocal()
+    write_db: Session = SessionLocalWrite()
+    read_db: Session = SessionLocalRead()
     try:
         if event_type == "OrderCreated":
-            # Add to warehouse orders table with status "Pending"
+            # Add to command side (Command DB)
             db_order = models.DBWarehouseOrder(
                 order_id=order_id,
                 status="Pending",
                 items=data.get("items", [])
             )
-            db.add(db_order)
-            db.commit()
-            print(f" [✓] Added Order {order_id} to warehouse_orders")
+            write_db.add(db_order)
+            write_db.commit()
+            print(f" [✓] Added Order {order_id} to warehouse_orders (Command)")
+            
+            # Add to query side (Query DB)
+            db_view = models.DBWarehouseOrderView(
+                order_id=order_id,
+                status="Pending",
+                items=data.get("items", [])
+            )
+            read_db.add(db_view)
+            read_db.commit()
+            print(f" [✓] Added Order {order_id} to warehouse_order_views (Query)")
             
         elif event_type == "OrderCancelled":
-            # If order cancelled, remove it from warehouse
-            db_order = db.query(models.DBWarehouseOrder).filter(models.DBWarehouseOrder.order_id == order_id).first()
+            # Remove from command side
+            db_order = write_db.query(models.DBWarehouseOrder).filter(models.DBWarehouseOrder.order_id == order_id).first()
             if db_order:
-                db.delete(db_order)
-                db.commit()
-                print(f" [✓] Removed cancelled Order {order_id} from warehouse_orders")
+                write_db.delete(db_order)
+                write_db.commit()
+                print(f" [✓] Removed cancelled Order {order_id} from warehouse_orders (Command)")
+            
+            # Remove from query side
+            db_view = read_db.query(models.DBWarehouseOrderView).filter(models.DBWarehouseOrderView.order_id == order_id).first()
+            if db_view:
+                read_db.delete(db_view)
+                read_db.commit()
+                print(f" [✓] Removed cancelled Order {order_id} from warehouse_order_views (Query)")
+
+        elif event_type == "WarehouseOrderStatusUpdated":
+            # Sync status updates to query side
+            db_view = read_db.query(models.DBWarehouseOrderView).filter(models.DBWarehouseOrderView.order_id == order_id).first()
+            if db_view:
+                db_view.status = data.get("status", "Pending")
+                read_db.commit()
+                print(f" [✓] Updated Order {order_id} status to {db_view.status} in warehouse_order_views (Query)")
+
+        elif event_type == "WarehouseOrderProcessed":
+            # Order is processed and deleted from command side in API; delete from query side too
+            db_view = read_db.query(models.DBWarehouseOrderView).filter(models.DBWarehouseOrderView.order_id == order_id).first()
+            if db_view:
+                read_db.delete(db_view)
+                read_db.commit()
+                print(f" [✓] Removed processed Order {order_id} from warehouse_order_views (Query)")
 
     except Exception as e:
-        db.rollback()
+        write_db.rollback()
+        read_db.rollback()
         print(f" [✗] Error processing event in Warehouse Consumer: {e}")
     finally:
-        db.close()
+        write_db.close()
+        read_db.close()
 
 def main():
     # Make sure tables exist
-    models.Base.metadata.create_all(bind=engine)
+    models.WriteBase.metadata.create_all(bind=write_engine)
+    models.ReadBase.metadata.create_all(bind=read_engine)
     
     parameters = pika.URLParameters(RABBITMQ_URL)
     connection = pika.BlockingConnection(parameters)
@@ -58,9 +95,11 @@ def main():
     queue_name = 'warehouse_service_queue'
     channel.queue_declare(queue=queue_name, durable=True)
 
-    # Bind queue to OrderCreated and OrderCancelled events
+    # Bind queue to events
     channel.queue_bind(exchange='order_events_exchange', queue=queue_name, routing_key="order.OrderCreated")
     channel.queue_bind(exchange='order_events_exchange', queue=queue_name, routing_key="order.OrderCancelled")
+    channel.queue_bind(exchange='order_events_exchange', queue=queue_name, routing_key="warehouse.WarehouseOrderStatusUpdated")
+    channel.queue_bind(exchange='order_events_exchange', queue=queue_name, routing_key="warehouse.WarehouseOrderProcessed")
 
     def callback(ch, method, properties, body):
         try:

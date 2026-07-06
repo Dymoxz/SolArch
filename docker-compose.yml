@@ -25,30 +25,30 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  db-order-write:
+  db-command:
     image: postgres:15-alpine
-    container_name: ball_postgres_order_write
+    container_name: ball_postgres_command
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_USER: order_user
-      POSTGRES_PASSWORD: order_password
-      POSTGRES_DB: order_write
+      POSTGRES_USER: command_user
+      POSTGRES_PASSWORD: command_password
+      POSTGRES_DB: command_db
     volumes:
-      - postgres_order_write_data:/var/lib/postgresql/data
+      - postgres_command_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  db-order-read:
+  db-query:
     image: postgres:15-alpine
-    container_name: ball_postgres_order_read
+    container_name: ball_postgres_query
     ports:
       - "5434:5432"
     environment:
-      POSTGRES_USER: order_user
-      POSTGRES_PASSWORD: order_password
-      POSTGRES_DB: order_read
+      POSTGRES_USER: query_user
+      POSTGRES_PASSWORD: query_password
+      POSTGRES_DB: query_db
     volumes:
-      - postgres_order_read_data:/var/lib/postgresql/data
+      - postgres_query_data:/var/lib/postgresql/data
     restart: unless-stopped
 
   order-api:
@@ -58,12 +58,12 @@ services:
       - "8000:8000"
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_WRITE_URL=postgresql://order_user:order_password@db-order-write:5432/order_write
-      - DATABASE_READ_URL=postgresql://order_user:order_password@db-order-read:5432/order_read
+      - DATABASE_WRITE_URL=postgresql://command_user:command_password@db-command:5432/command_db
+      - DATABASE_READ_URL=postgresql://query_user:query_password@db-query:5432/query_db
     depends_on:
       - rabbitmq
-      - db-order-write
-      - db-order-read
+      - db-command
+      - db-query
     volumes:
       - ./order-management/app:/app
     restart: unless-stopped
@@ -74,12 +74,12 @@ services:
     command: python /app/consumer.py
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_WRITE_URL=postgresql://order_user:order_password@db-order-write:5432/order_write
-      - DATABASE_READ_URL=postgresql://order_user:order_password@db-order-read:5432/order_read
+      - DATABASE_WRITE_URL=postgresql://command_user:command_password@db-command:5432/command_db
+      - DATABASE_READ_URL=postgresql://query_user:query_password@db-query:5432/query_db
     depends_on:
       - rabbitmq
-      - db-order-write
-      - db-order-read
+      - db-command
+      - db-query
     volumes:
       - ./order-management/app:/app
     restart: unless-stopped
@@ -138,10 +138,12 @@ services:
       - "8002:8001"
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+      - DATABASE_WRITE_URL=postgresql://command_user:command_password@db-command:5432/command_db
+      - DATABASE_READ_URL=postgresql://query_user:query_password@db-query:5432/query_db
     depends_on:
       - rabbitmq
-      - db
+      - db-command
+      - db-query
     volumes:
       - ./warehouse-management/app:/app
     restart: unless-stopped
@@ -152,10 +154,12 @@ services:
     command: python /app/consumer.py
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+      - DATABASE_WRITE_URL=postgresql://command_user:command_password@db-command:5432/command_db
+      - DATABASE_READ_URL=postgresql://query_user:query_password@db-query:5432/query_db
     depends_on:
       - rabbitmq
-      - db
+      - db-command
+      - db-query
     volumes:
       - ./warehouse-management/app:/app
     restart: unless-stopped
@@ -167,10 +171,12 @@ services:
       - "8003:8002"
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+      - DATABASE_WRITE_URL=postgresql://command_user:command_password@db-command:5432/command_db
+      - DATABASE_READ_URL=postgresql://query_user:query_password@db-query:5432/query_db
     depends_on:
       - rabbitmq
-      - db
+      - db-command
+      - db-query
     volumes:
       - ./shipping-management/app:/app
     restart: unless-stopped
@@ -181,10 +187,12 @@ services:
     command: python /app/consumer.py
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+      - DATABASE_WRITE_URL=postgresql://command_user:command_password@db-command:5432/command_db
+      - DATABASE_READ_URL=postgresql://query_user:query_password@db-query:5432/query_db
     depends_on:
       - rabbitmq
-      - db
+      - db-command
+      - db-query
     volumes:
       - ./shipping-management/app:/app
     restart: unless-stopped
@@ -233,5 +241,5 @@ services:
 volumes:
   rabbitmq_data:
   postgres_data:
-  postgres_order_write_data:
-  postgres_order_read_data:
+  postgres_command_data:
+  postgres_query_data:

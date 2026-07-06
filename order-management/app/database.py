@@ -5,11 +5,11 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 # Database URLs matching our segregated CQRS architecture
 DATABASE_WRITE_URL = os.getenv(
     "DATABASE_WRITE_URL",
-    "postgresql://order_user:order_password@db-order-write:5432/order_write"
+    "postgresql://command_user:command_password@db-command:5432/command_db"
 )
 DATABASE_READ_URL = os.getenv(
     "DATABASE_READ_URL",
-    "postgresql://order_user:order_password@db-order-read:5432/order_read"
+    "postgresql://query_user:query_password@db-query:5432/query_db"
 )
 
 write_engine = create_engine(DATABASE_WRITE_URL)

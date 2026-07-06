@@ -2,14 +2,33 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://order_user:order_password@db:5432/order_management")
+DATABASE_WRITE_URL = os.getenv(
+    "DATABASE_WRITE_URL",
+    "postgresql://command_user:command_password@db-command:5432/command_db"
+)
+DATABASE_READ_URL = os.getenv(
+    "DATABASE_READ_URL",
+    "postgresql://query_user:query_password@db-query:5432/query_db"
+)
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+write_engine = create_engine(DATABASE_WRITE_URL)
+read_engine = create_engine(DATABASE_READ_URL)
 
-def get_db():
-    db = SessionLocal()
+SessionLocalWrite = sessionmaker(autocommit=False, autoflush=False, bind=write_engine)
+SessionLocalRead = sessionmaker(autocommit=False, autoflush=False, bind=read_engine)
+
+WriteBase = declarative_base()
+ReadBase = declarative_base()
+
+def get_write_db():
+    db = SessionLocalWrite()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def get_read_db():
+    db = SessionLocalRead()
     try:
         yield db
     finally:
