@@ -1,8 +1,12 @@
 const { StringDecoder } = require('string_decoder');
 const { Pool } = require('pg');
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+const poolCommand = new Pool({
+    connectionString: process.env.DATABASE_WRITE_URL,
+});
+
+const poolQuery = new Pool({
+    connectionString: process.env.DATABASE_READ_URL,
 });
 
 // Helper function to extract and parse JSON body payload from native HTTP streams
@@ -35,18 +39,26 @@ async function handleRoutes(req, res) {
                 return res.end(JSON.stringify({ error: "Missing topic, body, or user_id" }));
             }
 
-            const result = await pool.query(
+            const result = await poolCommand.query(
                 `INSERT INTO customer_service (topic, body, user_id, responses) 
                  VALUES ($1, $2, $3, '[]'::jsonb) RETURNING *`,
                 [topic, body, user_id]
             );
+
+            // Synchronize with the Query DB immediately using the generated ID
+            await poolQuery.query(
+                `INSERT INTO customer_service (id, topic, body, user_id, responses) 
+                 VALUES ($1, $2, $3, $4, '[]'::jsonb) ON CONFLICT DO NOTHING`,
+                [result.rows[0].id, topic, body, user_id]
+            );
+
             res.statusCode = 201;
             return res.end(JSON.stringify(result.rows[0]));
         }
 
         // --- 2. GET /customer-service (Get All Tickets) ---
         if (url === '/customer-service' && method === 'GET') {
-            const result = await pool.query('SELECT * FROM customer_service ORDER BY id DESC');
+            const result = await poolQuery.query('SELECT * FROM customer_service ORDER BY id DESC');
             res.statusCode = 200;
             return res.end(JSON.stringify(result.rows));
         }
@@ -58,7 +70,7 @@ async function handleRoutes(req, res) {
         // --- 3. GET /customer-service/:id (Get Ticket By ID) ---
         if (ticketIdMatch && method === 'GET') {
             const id = ticketIdMatch[1];
-            const result = await pool.query('SELECT * FROM customer_service WHERE id = $1', [id]);
+            const result = await poolQuery.query('SELECT * FROM customer_service WHERE id = $1', [id]);
 
             if (result.rows.length === 0) {
                 res.statusCode = 404;
@@ -71,12 +83,16 @@ async function handleRoutes(req, res) {
         // --- 4. DELETE /customer-service/:id (Delete Ticket By ID) ---
         if (ticketIdMatch && method === 'DELETE') {
             const id = ticketIdMatch[1];
-            const result = await pool.query('DELETE FROM customer_service WHERE id = $1 RETURNING id', [id]);
+            const result = await poolCommand.query('DELETE FROM customer_service WHERE id = $1 RETURNING id', [id]);
 
             if (result.rows.length === 0) {
                 res.statusCode = 404;
                 return res.end(JSON.stringify({ error: `Ticket with ID ${id} not found` }));
             }
+
+            // Sync deletion to Query DB
+            await poolQuery.query('DELETE FROM customer_service WHERE id = $1', [id]);
+
             res.statusCode = 200;
             return res.end(JSON.stringify({ message: `Ticket ${id} successfully deleted` }));
         }
@@ -98,12 +114,25 @@ async function handleRoutes(req, res) {
                 created_at: new Date().toISOString()
             };
 
-            // Inject the entry dynamically onto the existing JSONB array using || operator concat
-            const result = await pool.query(
+            // Inject the entry dynamically onto the existing JSONB array in Command DB
+            const result = await poolCommand.query(
                 `UPDATE customer_service 
                  SET responses = responses || $1::jsonb 
                  WHERE id = $2 
                  RETURNING *`,
+                [JSON.stringify([responseEntry]), id]
+            );
+
+            if (result.rows.length === 0) {
+                res.statusCode = 404;
+                return res.end(JSON.stringify({ error: `Ticket with ID ${id} not found` }));
+            }
+
+            // Sync response addition to Query DB
+            await poolQuery.query(
+                `UPDATE customer_service 
+                 SET responses = responses || $1::jsonb 
+                 WHERE id = $2`,
                 [JSON.stringify([responseEntry]), id]
             );
 

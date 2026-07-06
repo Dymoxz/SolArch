@@ -2,7 +2,8 @@ const amqp = require('amqplib');
 const { Pool } = require('pg');
 
 // Reuse your database connection string
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const poolCommand = new Pool({ connectionString: process.env.DATABASE_WRITE_URL });
+const poolQuery = new Pool({ connectionString: process.env.DATABASE_READ_URL });
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://admin:admin_password@rabbitmq:5672/';
 
 async function startExcelConsumer() {
@@ -26,19 +27,37 @@ async function startExcelConsumer() {
                     const ticket = JSON.parse(msg.content.toString());
                     console.log(`[EIP Consumer] Syncing raw payload record: "${ticket.topic}"`);
 
-                    // Core Idempotent Database Write Operation
-                    const insertQuery = `
+                    // Write to Command DB
+                    const insertCommandQuery = `
                         INSERT INTO customer_service (topic, body, user_id, responses)
                         VALUES ($1, $2, $3, $4::jsonb)
-                        ON CONFLICT DO NOTHING;
+                        ON CONFLICT DO NOTHING
+                        RETURNING id;
                     `;
 
-                    await pool.query(insertQuery, [
+                    const result = await poolCommand.query(insertCommandQuery, [
                         ticket.topic,
                         ticket.body,
                         ticket.user_id,
                         JSON.stringify(ticket.responses || [])
                     ]);
+
+                    // If a new row was inserted, sync it to Query DB with the same ID
+                    if (result.rows.length > 0) {
+                        const generatedId = result.rows[0].id;
+                        const insertQueryQuery = `
+                            INSERT INTO customer_service (id, topic, body, user_id, responses)
+                            VALUES ($1, $2, $3, $4, $5::jsonb)
+                            ON CONFLICT DO NOTHING;
+                        `;
+                        await poolQuery.query(insertQueryQuery, [
+                            generatedId,
+                            ticket.topic,
+                            ticket.body,
+                            ticket.user_id,
+                            JSON.stringify(ticket.responses || [])
+                        ]);
+                    }
 
                     // Remove successfully stored object from RabbitMQ broker stack
                     channel.ack(msg);

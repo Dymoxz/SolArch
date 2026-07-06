@@ -4,12 +4,12 @@ import pika
 import json
 import os
 
+import models
 from models import ProductCreate, ProductResponse
 
 from database import write_engine, read_engine, get_write_db, get_read_db
 from sqlalchemy.orm import Session
 from fastapi import Depends
-import models
 
 # Ensure tables are created in their respective databases
 models.WriteBase.metadata.create_all(bind=write_engine)

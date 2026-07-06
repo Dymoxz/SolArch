@@ -12,19 +12,6 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
     restart: unless-stopped
 
-  db:
-    image: postgres:15-alpine
-    container_name: ball_postgres
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: order_user
-      POSTGRES_PASSWORD: order_password
-      POSTGRES_DB: order_management
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
   db-command:
     image: postgres:15-alpine
     container_name: ball_postgres_command
@@ -126,10 +113,12 @@ services:
     environment:
       - NODE_ENV=production
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+      - DATABASE_WRITE_URL=postgresql://command_user:command_password@db-command:5432/command_db
+      - DATABASE_READ_URL=postgresql://query_user:query_password@db-query:5432/query_db
     depends_on:
       - rabbitmq
-      - db
+      - db-command
+      - db-query
     volumes:
       - ./customer-service:/app
       - /app/node_modules
@@ -248,6 +237,5 @@ services:
 
 volumes:
   rabbitmq_data:
-  postgres_data:
   postgres_command_data:
   postgres_query_data:

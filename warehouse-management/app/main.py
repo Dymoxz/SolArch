@@ -4,6 +4,7 @@ from uuid import UUID
 
 from database import write_engine, read_engine, get_write_db, get_read_db
 from messaging import publish_warehouse_event
+import models
 
 # Ensure tables are created in their respective databases
 models.WriteBase.metadata.create_all(bind=write_engine)
