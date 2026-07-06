@@ -4,7 +4,7 @@ import os
 from uuid import UUID
 from sqlalchemy.orm import Session
 
-from database import SessionLocal
+from database import SessionLocalRead
 import models
 
 RABBITMQ_URL = os.getenv(
@@ -20,7 +20,7 @@ def process_event(event_msg: dict):
 
     print(f"[*] Processing event: {event_type} for Product: {product_id}")
 
-    db: Session = SessionLocal()
+    db: Session = SessionLocalRead()
 
     try:
 

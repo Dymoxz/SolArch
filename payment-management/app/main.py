@@ -3,18 +3,19 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 import models
-from database import engine, get_db
+from database import write_engine, read_engine, get_write_db, get_read_db
 from messaging import publish_payment_event
 
-models.Base.metadata.create_all(bind=engine)
+models.WriteBase.metadata.create_all(bind=write_engine)
+models.ReadBase.metadata.create_all(bind=read_engine)
 
 app = FastAPI(title="Ball.com - Payment Service API")
 
 
 @app.post("/payments", response_model=models.PaymentResponse)
-def create_payment(payment: models.PaymentCreate, db: Session = Depends(get_db)):
+def create_payment(payment: models.PaymentCreate, write_db: Session = Depends(get_write_db), read_db: Session = Depends(get_read_db)):
 
-    existing = db.query(models.DBPaymentView)\
+    existing = read_db.query(models.DBPaymentView)\
         .filter(models.DBPaymentView.order_id == payment.order_id)\
         .first()
 
@@ -40,8 +41,8 @@ def create_payment(payment: models.PaymentCreate, db: Session = Depends(get_db))
         payload=payload
     )
 
-    db.add(db_event)
-    db.commit()
+    write_db.add(db_event)
+    write_db.commit()
 
     publish_payment_event("PaymentInitiated", payment_id, payload)
 
@@ -52,14 +53,14 @@ def create_payment(payment: models.PaymentCreate, db: Session = Depends(get_db))
 
 
 @app.get("/payments", response_model=list[models.PaymentResponse])
-def get_all_payments(db: Session = Depends(get_db)):
-    return db.query(models.DBPaymentView).all()
+def get_all_payments(read_db: Session = Depends(get_read_db)):
+    return read_db.query(models.DBPaymentView).all()
 
 
 @app.get("/payments/{payment_id}", response_model=models.PaymentResponse)
-def get_payment(payment_id, db: Session = Depends(get_db)):
+def get_payment(payment_id, read_db: Session = Depends(get_read_db)):
 
-    payment = db.query(models.DBPaymentView)\
+    payment = read_db.query(models.DBPaymentView)\
         .filter(models.DBPaymentView.id == payment_id)\
         .first()
 
@@ -70,16 +71,16 @@ def get_payment(payment_id, db: Session = Depends(get_db)):
 
 
 @app.put("/payments/{payment_id}", response_model=models.PaymentResponse)
-def update_payment(payment_id, payment: models.PaymentCreate, db: Session = Depends(get_db)):
+def update_payment(payment_id, payment: models.PaymentCreate, read_db: Session = Depends(get_read_db)):
 
-    db_payment = db.query(models.DBPaymentView)\
+    db_payment = read_db.query(models.DBPaymentView)\
         .filter(models.DBPaymentView.id == payment_id)\
         .first()
 
     if not db_payment:
         raise HTTPException(status_code=404, detail="Not found")
 
-    existing = db.query(models.DBPaymentView)\
+    existing = read_db.query(models.DBPaymentView)\
         .filter(models.DBPaymentView.order_id == payment.order_id)\
         .filter(models.DBPaymentView.id != payment_id)\
         .first()
@@ -95,7 +96,7 @@ def update_payment(payment_id, payment: models.PaymentCreate, db: Session = Depe
     db_payment.amount = payment.amount
     db_payment.method = payment.method
 
-    db.commit()
+    read_db.commit()
 
     payload = {
         "order_id": str(payment.order_id),
@@ -111,17 +112,17 @@ def update_payment(payment_id, payment: models.PaymentCreate, db: Session = Depe
 
 
 @app.delete("/payments/{payment_id}")
-def delete_payment(payment_id, db: Session = Depends(get_db)):
+def delete_payment(payment_id, read_db: Session = Depends(get_read_db)):
 
-    payment = db.query(models.DBPaymentView)\
+    payment = read_db.query(models.DBPaymentView)\
         .filter(models.DBPaymentView.id == payment_id)\
         .first()
 
     if not payment:
         raise HTTPException(status_code=404, detail="Not found")
 
-    db.delete(payment)
-    db.commit()
+    read_db.delete(payment)
+    read_db.commit()
 
     publish_payment_event("PaymentDeleted", payment_id, {})
 

@@ -2,9 +2,9 @@ import uuid
 from pydantic import BaseModel
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from database import Base
+from database import WriteBase, ReadBase
 
-class DBProductView(Base):
+class DBProductView(ReadBase):
     __tablename__ = "product_views"
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True)
@@ -14,14 +14,14 @@ class DBProductView(Base):
     inventory = Column(Integer, nullable=False)
     status = Column(String, nullable=False)
 
-class Supplier(Base):
+class Supplier(WriteBase):
     __tablename__ = "suppliers"
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True)
     name = Column(String, nullable=False)
     is_trusted = Column(Boolean, default=True)
 
-class SupplierProduct(Base):
+class SupplierProduct(WriteBase):
     __tablename__ = "supplier_products"
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True)

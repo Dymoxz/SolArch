@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 import models
-from database import SessionLocal
+from database import SessionLocalRead
 
 RABBITMQ_URL = os.getenv(
     "RABBITMQ_URL",
@@ -19,7 +19,7 @@ def process_event(event_msg: dict):
     payment_id = UUID(event_msg.get("payment_id"))
     data = event_msg.get("data", {})
 
-    db: Session = SessionLocal()
+    db: Session = SessionLocalRead()
 
     try:
 

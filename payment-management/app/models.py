@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import Column, String, Integer, DateTime, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 
-from database import Base
+from database import WriteBase, ReadBase
 
 from enum import Enum
 
@@ -13,7 +13,7 @@ class PaymentMethod(str, Enum):
     ForwardPay = "ForwardPay"
     AfterPay = "AfterPay"
 
-class DBPaymentEvent(Base):
+class DBPaymentEvent(WriteBase):
     __tablename__ = "payment_events"
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -22,7 +22,7 @@ class DBPaymentEvent(Base):
     payload = Column(JSONB, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
-class DBPaymentView(Base):
+class DBPaymentView(ReadBase):
     __tablename__ = "payment_views"
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True)

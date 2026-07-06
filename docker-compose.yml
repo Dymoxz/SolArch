@@ -91,10 +91,12 @@ services:
       - "8001:8000"
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+      - DATABASE_WRITE_URL=postgresql://command_user:command_password@db-command:5432/command_db
+      - DATABASE_READ_URL=postgresql://query_user:query_password@db-query:5432/query_db
     depends_on:
       - rabbitmq
-      - db
+      - db-command
+      - db-query
     volumes:
       - ./product-management/app:/app
     restart: unless-stopped
@@ -105,10 +107,12 @@ services:
     command: python /app/consumer.py
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+      - DATABASE_WRITE_URL=postgresql://command_user:command_password@db-command:5432/command_db
+      - DATABASE_READ_URL=postgresql://query_user:query_password@db-query:5432/query_db
     depends_on:
       - rabbitmq
-      - db
+      - db-command
+      - db-query
     volumes:
       - ./product-management/app:/app
     restart: unless-stopped
@@ -204,10 +208,12 @@ services:
       - "8004:8000"
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+      - DATABASE_WRITE_URL=postgresql://command_user:command_password@db-command:5432/command_db
+      - DATABASE_READ_URL=postgresql://query_user:query_password@db-query:5432/query_db
     depends_on:
       - rabbitmq
-      - db
+      - db-command
+      - db-query
     volumes:
       - ./payment-management/app:/app
     restart: unless-stopped
@@ -218,10 +224,12 @@ services:
     command: python /app/consumer.py
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+      - DATABASE_WRITE_URL=postgresql://command_user:command_password@db-command:5432/command_db
+      - DATABASE_READ_URL=postgresql://query_user:query_password@db-query:5432/query_db
     depends_on:
       - rabbitmq
-      - db
+      - db-command
+      - db-query
     volumes:
       - ./payment-management/app:/app
     restart: unless-stopped
