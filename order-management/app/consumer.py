@@ -3,7 +3,7 @@ import sys
 import json
 import pika
 from sqlalchemy.orm import Session
-from database import SessionLocal
+from database import SessionLocalWrite, SessionLocalRead
 import models
 from messaging import publish_order_event
 
@@ -17,7 +17,8 @@ def process_event(event_msg: dict):
 
     print(f" [*] Processing event: {event_type} for Order: {order_id}")
 
-    db: Session = SessionLocal()
+    write_db: Session = SessionLocalWrite()
+    read_db: Session = SessionLocalRead()
     try:
         if event_type == "OrderCreated":
             db_view = models.DBOrderView(
@@ -26,15 +27,15 @@ def process_event(event_msg: dict):
                 status=data["status"],
                 items=data["items"]
             )
-            db.add(db_view)
-            db.commit()
+            read_db.add(db_view)
+            read_db.commit()
             print(f" [✓] Created Read View for Order {order_id}")
 
         elif event_type == "OrderCancelled":
-            db_view = db.query(models.DBOrderView).filter(models.DBOrderView.id == order_id).first()
+            db_view = read_db.query(models.DBOrderView).filter(models.DBOrderView.id == order_id).first()
             if db_view:
-                db.delete(db_view)
-                db.commit()
+                read_db.delete(db_view)
+                read_db.commit()
                 print(f" [✓] Deleted Read View for Order {order_id}")
 
         elif event_type == "WarehouseOrderProcessed":
@@ -44,15 +45,15 @@ def process_event(event_msg: dict):
                 event_type="OrderProcessed",
                 payload=data
             )
-            db.add(db_event)
-            db.commit()
+            write_db.add(db_event)
+            write_db.commit()
             print(f" [✓] Appended OrderProcessed event for Order {order_id}")
 
             # 2. Update status in Read View
-            db_view = db.query(models.DBOrderView).filter(models.DBOrderView.id == order_id).first()
+            db_view = read_db.query(models.DBOrderView).filter(models.DBOrderView.id == order_id).first()
             if db_view:
                 db_view.status = "Processed"
-                db.commit()
+                read_db.commit()
                 print(f" [✓] Updated Read View status for Order {order_id} to Processed")
 
                 # 3. Publish order to Shipping Management
@@ -64,10 +65,12 @@ def process_event(event_msg: dict):
                 print(f" [✓] Published OrderSentToShipping event for Order {order_id}")
 
     except Exception as e:
-        db.rollback()
+        write_db.rollback()
+        read_db.rollback()
         print(f" [✗] Error processing event: {e}")
     finally:
-        db.close()
+        write_db.close()
+        read_db.close()
 
 
 def main():

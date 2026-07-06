@@ -1,7 +1,7 @@
 import uuid
 from typing import List
 
-from database import Base
+from database import WriteBase, ReadBase
 from pydantic import BaseModel, Field
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 
 
-class DBOrderEvent(Base):
+class DBOrderEvent(WriteBase):
     """The Command Side: Event Store tracking every state change."""
 
     __tablename__ = "order_events"
@@ -21,7 +21,7 @@ class DBOrderEvent(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
-class DBOrderView(Base):
+class DBOrderView(ReadBase):
     """The Query Side: Materialized view optimized for fast GET requests."""
 
     __tablename__ = "order_views"

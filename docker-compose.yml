@@ -25,6 +25,32 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  db-order-write:
+    image: postgres:15-alpine
+    container_name: ball_postgres_order_write
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: order_user
+      POSTGRES_PASSWORD: order_password
+      POSTGRES_DB: order_write
+    volumes:
+      - postgres_order_write_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  db-order-read:
+    image: postgres:15-alpine
+    container_name: ball_postgres_order_read
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: order_user
+      POSTGRES_PASSWORD: order_password
+      POSTGRES_DB: order_read
+    volumes:
+      - postgres_order_read_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
   order-api:
     build: ./order-management
     container_name: ball_order_api
@@ -32,10 +58,12 @@ services:
       - "8000:8000"
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+      - DATABASE_WRITE_URL=postgresql://order_user:order_password@db-order-write:5432/order_write
+      - DATABASE_READ_URL=postgresql://order_user:order_password@db-order-read:5432/order_read
     depends_on:
       - rabbitmq
-      - db
+      - db-order-write
+      - db-order-read
     volumes:
       - ./order-management/app:/app
     restart: unless-stopped
@@ -46,10 +74,12 @@ services:
     command: python /app/consumer.py
     environment:
       - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
-      - DATABASE_URL=postgresql://order_user:order_password@db:5432/order_management
+      - DATABASE_WRITE_URL=postgresql://order_user:order_password@db-order-write:5432/order_write
+      - DATABASE_READ_URL=postgresql://order_user:order_password@db-order-read:5432/order_read
     depends_on:
       - rabbitmq
-      - db
+      - db-order-write
+      - db-order-read
     volumes:
       - ./order-management/app:/app
     restart: unless-stopped
@@ -203,3 +233,5 @@ services:
 volumes:
   rabbitmq_data:
   postgres_data:
+  postgres_order_write_data:
+  postgres_order_read_data:
