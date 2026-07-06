@@ -86,7 +86,7 @@ services:
   customer-service:
     build: ./customer-service
     container_name: ball_customer_service
-    command: node /app/server.js
+    command: node app/server.js
     ports:
       - "3000:3000"
     environment:
@@ -97,7 +97,7 @@ services:
       - rabbitmq
       - db
     volumes:
-      - ./customer-service/app:/app
+      - ./customer-service:/app
       - /app/node_modules
     restart: unless-stopped
 
@@ -187,6 +187,18 @@ services:
     volumes:
       - ./payment-management/app:/app
     restart: unless-stopped
+
+  excel-publisher:
+    build: ./external-integration
+    container_name: ball_excel_publisher
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin_password@rabbitmq:5672/
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./external-integration/app:/app
+    profiles:
+      - tools
 
 volumes:
   rabbitmq_data:

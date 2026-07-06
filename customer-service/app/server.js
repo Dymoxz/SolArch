@@ -1,6 +1,6 @@
 const { createServer } = require('node:http');
 const { handleRoutes } = require('./routes');
-
+const { startExcelConsumer } = require('./consumer');
 const hostname = '0.0.0.0';
 const port = 3000;
 
@@ -43,6 +43,8 @@ async function runDatabaseMigrations() {
 
 // Wrap your server setup in an async block so it runs migrations first
 runDatabaseMigrations().then(() => {
+    startExcelConsumer();
+
     server.listen(port, hostname, () => {
         console.log(`Customer Service microserver listening at http://localhost:${port}/`);
     });
